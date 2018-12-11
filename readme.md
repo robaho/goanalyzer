@@ -16,3 +16,9 @@ Here is the old page:
 And thew new:
 
 ![new](doc/new.png)
+
+To run it, just build, and
+
+./goanalyzer options
+
+where options are the same for go tool trace. options is typically a trace file.
