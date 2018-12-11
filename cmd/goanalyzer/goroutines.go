@@ -221,7 +221,7 @@ function reloadTable(key, value) {
 <th onclick="reloadTable('sortby', 'SweepTime')"> GC sweeping</th>
 <th onclick="reloadTable('sortby', 'GCTime')"> GC pause</th>
 </tr>
-{{range .GList}}
+{{range $i,$e := .GList}}
   <tr>
 	<td><a href="/goroutine?id={{.ID}}">{{.Name}}</a></td>
 	<td>{{.N}}</td>
@@ -238,10 +238,10 @@ function reloadTable(key, value) {
         </div>
     </td>
     <td> {{prettyDuration .ExecTime}}  {{percent .ExecTime.Total $.TotalExecTime}} {{minavgmax .ExecTime}}</td>
-    <td> {{prettyDuration .IOTime}} {{minavgmax .IOTime}}</td>
-    <td> {{prettyDuration .BlockTime}} {{minavgmax .BlockTime}}</td>
-    <td> {{prettyDuration .SyscallTime}} {{minavgmax .SyscallTime}}</td>
-    <td> {{prettyDuration .SchedWaitTime}} {{minavgmax .SchedWaitTime}}</td>
+    <td><a href="/io?id={{$e.ID}}"> {{prettyDuration .IOTime}} {{minavgmax .IOTime}}</a></td>
+    <td><a href="/block?id={{$e.ID}}"> {{prettyDuration .BlockTime}} {{minavgmax .BlockTime}}</a></td>
+    <td><a href="/syscall?id={{$e.ID}}"> {{prettyDuration .SyscallTime}} {{minavgmax .SyscallTime}}</a></td>
+    <td><a href="/sched?id={{$e.ID}}"> {{prettyDuration .SchedWaitTime}} {{minavgmax .SchedWaitTime}}</a></td>
     <td> {{prettyDuration .SweepTime}} {{percent .SweepTime.Total .TotalTime.Total}}</td>
     <td> {{prettyDuration .GCTime}} {{percent .GCTime.Total .TotalTime.Total}} {{minavgmax .GCTime}}</td>
 	{{end}}
