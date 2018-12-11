@@ -13,7 +13,7 @@ Here is the old page:
 
 ![old](doc/old.png)
 
-And thew new:
+And the new:
 
 ![new](doc/new.png)
 
