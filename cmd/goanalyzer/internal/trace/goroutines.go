@@ -68,6 +68,7 @@ func (s *GExecutionStatEntry) addTime(time int64) {
 	if time > s.Max {
 		s.Max = time
 	}
+
 }
 
 func (s *GExecutionStatEntry) AddStat(s2 GExecutionStatEntry) {
@@ -103,13 +104,29 @@ type GExecutionStat struct {
 func (s GExecutionStat) sub(v GExecutionStat) (r GExecutionStat) {
 	r = s
 	r.ExecTime.Total -= v.ExecTime.Total
+	r.ExecTime.Min -= v.ExecTime.Min
+	r.ExecTime.Max -= v.ExecTime.Max
 	r.SchedWaitTime.Total -= v.SchedWaitTime.Total
+	r.SchedWaitTime.Min -= v.SchedWaitTime.Min
+	r.SchedWaitTime.Max -= v.SchedWaitTime.Max
 	r.IOTime.Total -= v.IOTime.Total
+	r.IOTime.Min -= v.IOTime.Min
+	r.IOTime.Max -= v.IOTime.Max
 	r.BlockTime.Total -= v.BlockTime.Total
+	r.BlockTime.Min -= v.BlockTime.Min
+	r.BlockTime.Max -= v.BlockTime.Max
 	r.SyscallTime.Total -= v.SyscallTime.Total
+	r.SyscallTime.Min -= r.SyscallTime.Min
+	r.SyscallTime.Max -= r.SyscallTime.Max
 	r.GCTime.Total -= v.GCTime.Total
+	r.GCTime.Min -= v.GCTime.Min
+	r.GCTime.Max -= v.GCTime.Max
 	r.SweepTime.Total -= v.SweepTime.Total
+	r.SweepTime.Min -= v.SweepTime.Min
+	r.SweepTime.Max -= v.SweepTime.Max
 	r.TotalTime.Total -= v.TotalTime.Total
+	r.TotalTime.Min -= r.TotalTime.Min
+	r.TotalTime.Max -= r.TotalTime.Max
 	return r
 }
 
