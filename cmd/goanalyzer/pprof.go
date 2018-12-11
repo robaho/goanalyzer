@@ -9,7 +9,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"internal/trace"
+	"github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"io"
 	"io/ioutil"
 	"net/http"

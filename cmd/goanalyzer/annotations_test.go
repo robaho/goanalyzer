@@ -11,7 +11,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	traceparser "internal/trace"
+	traceparser "github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"io/ioutil"
 	"reflect"
 	"runtime/debug"

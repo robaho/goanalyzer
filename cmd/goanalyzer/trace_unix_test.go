@@ -8,7 +8,7 @@ package main
 
 import (
 	"bytes"
-	traceparser "internal/trace"
+	traceparser "github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"io/ioutil"
 	"runtime"
 	"runtime/trace"

@@ -7,8 +7,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"html/template"
-	"internal/trace"
 	"log"
 	"math"
 	"net/http"
@@ -439,7 +439,7 @@ func (task *taskDesc) complete() bool {
 }
 
 // descendents returns all the task nodes in the subtree rooted from this task.
-func (task *taskDesc) decendents() []*taskDesc {
+func (task *taskDesc) descendants() []*taskDesc {
 	if task == nil {
 		return nil
 	}

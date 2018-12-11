@@ -6,11 +6,10 @@ package main
 
 import (
 	"bufio"
-	"cmd/internal/browser"
 	"flag"
 	"fmt"
+	"github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"html/template"
-	"internal/trace"
 	"io"
 	"log"
 	"net"
@@ -129,7 +128,8 @@ func main() {
 
 	addr := "http://" + ln.Addr().String()
 	log.Printf("Opening browser. Trace viewer is listening on %s", addr)
-	browser.Open(addr)
+	//TODO don't have access to internal/browser package
+	//browser.Open(addr)
 
 	// Start http server.
 	http.HandleFunc("/", httpMain)

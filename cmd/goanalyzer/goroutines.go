@@ -8,8 +8,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"html/template"
-	"internal/trace"
 	"log"
 	"net/http"
 	"reflect"

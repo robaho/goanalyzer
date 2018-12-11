@@ -8,7 +8,7 @@ package main
 
 import (
 	"context"
-	"internal/trace"
+	"github.com/robaho/goanalyzer/cmd/goanalyzer/internal/trace"
 	"io/ioutil"
 	rtrace "runtime/trace"
 	"strings"
