@@ -1155,9 +1155,18 @@ func isUserAnnotationEvent(ev *trace.Event) (taskID uint64, ok bool) {
 }
 
 var templUserRegionType = template.Must(template.New("").Funcs(template.FuncMap{
-	"prettyDuration": func(nsec int64) template.HTML {
-		d := time.Duration(nsec) * time.Nanosecond
+	"prettyDuration": func(s trace.GExecutionStatEntry) template.HTML {
+		d := time.Duration(s.Total) * time.Nanosecond
 		return template.HTML(niceDuration(d))
+	},
+	"minavgmax": func(s trace.GExecutionStatEntry) template.HTML {
+		if s.Count == 0 {
+			return ""
+		}
+		d := time.Duration(s.Total/s.Count) * time.Nanosecond
+		min := time.Duration(s.Min) * time.Nanosecond
+		max := time.Duration(s.Max) * time.Nanosecond
+		return "<small>" + template.HTML("["+niceDuration(min)+"/"+niceDuration(d)+"/"+niceDuration(max)+"]") + "</small>"
 	},
 	"percent": func(dividened, divisor int64) template.HTML {
 		if divisor == 0 {
@@ -1254,20 +1263,20 @@ function reloadTable(key, value) {
     <td>
         <div class="stacked-bar-graph">
           {{if unknownTime .}}<span style="width:{{barLen (unknownTime .) $.MaxTotal}}" class="unknown-time">&nbsp;</span>{{end}}
-          {{if .ExecTime}}<span style="width:{{barLen .ExecTime $.MaxTotal}}" class="exec-time">&nbsp;</span>{{end}}
-          {{if .IOTime}}<span style="width:{{barLen .IOTime $.MaxTotal}}" class="io-time">&nbsp;</span>{{end}}
-          {{if .BlockTime}}<span style="width:{{barLen .BlockTime $.MaxTotal}}" class="block-time">&nbsp;</span>{{end}}
-          {{if .SyscallTime}}<span style="width:{{barLen .SyscallTime $.MaxTotal}}" class="syscall-time">&nbsp;</span>{{end}}
-          {{if .SchedWaitTime}}<span style="width:{{barLen .SchedWaitTime $.MaxTotal}}" class="sched-time">&nbsp;</span>{{end}}
+          {{if .ExecTime}}<span style="width:{{barLen .ExecTime.Total $.MaxTotal}}" class="exec-time">&nbsp;</span>{{end}}
+          {{if .IOTime}}<span style="width:{{barLen .IOTime.Total $.MaxTotal}}" class="io-time">&nbsp;</span>{{end}}
+          {{if .BlockTime}}<span style="width:{{barLen .BlockTime.Total $.MaxTotal}}" class="block-time">&nbsp;</span>{{end}}
+          {{if .SyscallTime}}<span style="width:{{barLen .SyscallTime.Total $.MaxTotal}}" class="syscall-time">&nbsp;</span>{{end}}
+          {{if .SchedWaitTime}}<span style="width:{{barLen .SchedWaitTime.Total $.MaxTotal}}" class="sched-time">&nbsp;</span>{{end}}
         </div>
     </td>
-    <td> {{prettyDuration .ExecTime}}</td>
-    <td> {{prettyDuration .IOTime}}</td>
-    <td> {{prettyDuration .BlockTime}}</td>
-    <td> {{prettyDuration .SyscallTime}}</td>
-    <td> {{prettyDuration .SchedWaitTime}}</td>
-    <td> {{prettyDuration .SweepTime}} {{percent .SweepTime .TotalTime}}</td>
-    <td> {{prettyDuration .GCTime}} {{percent .GCTime .TotalTime}}</td>
+    <td> {{prettyDuration .ExecTime}} {{minavgmax .ExecTime}}</td>
+    <td> {{prettyDuration .IOTime}} {{minavgmax .IOTime}}</td>
+    <td> {{prettyDuration .BlockTime}} {{minavgmax .BlockTime}}</td>
+    <td> {{prettyDuration .SyscallTime}} {{minavgmax .SyscallTime}}</td>
+    <td> {{prettyDuration .SchedWaitTime}} {{minavgmax .SchedWaitTime}}</td>
+    <td> {{prettyDuration .SweepTime}} {{percent .SweepTime.Total .TotalTime.Total}} {{minavgmax .SweepTime}}</td>
+    <td> {{prettyDuration .GCTime}} {{percent .GCTime.Total .TotalTime.Total}} {{minavgmax .GCTime}}</td>
   </tr>
 {{end}}
 </table>
