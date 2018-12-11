@@ -45,6 +45,9 @@ type UserRegionDesc struct {
 	GExecutionStat
 }
 
+// GExecutionStateEntry contains basic statistical timing information. A more
+// advanced version might keep a histogram of timings. All of the values are
+// in nanos, except Count which is a count of entries in Total
 type GExecutionStatEntry struct {
 	Count int64
 	Total int64
