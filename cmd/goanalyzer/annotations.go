@@ -123,8 +123,8 @@ func httpUserRegion(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			data = append(data, s)
-			if maxTotal < s.TotalTime {
-				maxTotal = s.TotalTime
+			if maxTotal < s.TotalTime.Total {
+				maxTotal = s.TotalTime.Total
 			}
 		}
 	}
@@ -1172,9 +1172,9 @@ var templUserRegionType = template.Must(template.New("").Funcs(template.FuncMap{
 		return template.HTML(fmt.Sprintf("%.2f%%", float64(dividened)/float64(divisor)*100))
 	},
 	"unknownTime": func(desc regionDesc) int64 {
-		sum := desc.ExecTime + desc.IOTime + desc.BlockTime + desc.SyscallTime + desc.SchedWaitTime
-		if sum < desc.TotalTime {
-			return desc.TotalTime - sum
+		sum := desc.ExecTime.Total + desc.IOTime.Total + desc.BlockTime.Total + desc.SyscallTime.Total + desc.SchedWaitTime.Total
+		if sum < desc.TotalTime.Total {
+			return desc.TotalTime.Total - sum
 		}
 		return 0
 	},

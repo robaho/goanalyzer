@@ -4,7 +4,9 @@
 
 package trace
 
-import "sort"
+import (
+	"sort"
+)
 
 // GDesc contains statistics and execution details of a single goroutine.
 type GDesc struct {
@@ -37,36 +39,77 @@ type UserRegionDesc struct {
 
 	// Region end event. Normally EvUserRegion end event or nil,
 	// but can be EvGoStop or EvGoEnd event if the goroutine
-	// terminated without explicitely ending the region.
+	// terminated without explicitly ending the region.
 	End *Event
 
 	GExecutionStat
 }
 
+type GExecutionStatEntry struct {
+	Count int64
+	Total int64
+	Min   int64
+	Max   int64
+}
+
+func (s *GExecutionStatEntry) addTime(time int64) {
+	if time == 0 { // not possible
+		return
+	}
+	if s.Count == 0 {
+		s.Min = time
+		s.Max = time
+	}
+	s.Count++
+	s.Total += time
+	if time < s.Min {
+		s.Min = time
+	}
+	if time > s.Max {
+		s.Max = time
+	}
+}
+
+func (s *GExecutionStatEntry) AddStat(s2 GExecutionStatEntry) {
+	if s.Count == 0 {
+		s.Min = s2.Min
+		s.Max = s2.Max
+	} else if s2.Count > 0 {
+		if s2.Min < s.Min {
+			s.Min = s2.Min
+		}
+		if s2.Max > s.Max {
+			s.Max = s2.Max
+		}
+	}
+	s.Total += s2.Total
+	s.Count += s2.Count
+}
+
 // GExecutionStat contains statistics about a goroutine's execution
 // during a period of time.
 type GExecutionStat struct {
-	ExecTime      int64
-	SchedWaitTime int64
-	IOTime        int64
-	BlockTime     int64
-	SyscallTime   int64
-	GCTime        int64
-	SweepTime     int64
-	TotalTime     int64
+	ExecTime      GExecutionStatEntry
+	SchedWaitTime GExecutionStatEntry
+	IOTime        GExecutionStatEntry
+	BlockTime     GExecutionStatEntry
+	SyscallTime   GExecutionStatEntry
+	GCTime        GExecutionStatEntry
+	SweepTime     GExecutionStatEntry
+	TotalTime     GExecutionStatEntry
 }
 
 // sub returns the stats v-s.
 func (s GExecutionStat) sub(v GExecutionStat) (r GExecutionStat) {
 	r = s
-	r.ExecTime -= v.ExecTime
-	r.SchedWaitTime -= v.SchedWaitTime
-	r.IOTime -= v.IOTime
-	r.BlockTime -= v.BlockTime
-	r.SyscallTime -= v.SyscallTime
-	r.GCTime -= v.GCTime
-	r.SweepTime -= v.SweepTime
-	r.TotalTime -= v.TotalTime
+	r.ExecTime.Total -= v.ExecTime.Total
+	r.SchedWaitTime.Total -= v.SchedWaitTime.Total
+	r.IOTime.Total -= v.IOTime.Total
+	r.BlockTime.Total -= v.BlockTime.Total
+	r.SyscallTime.Total -= v.SyscallTime.Total
+	r.GCTime.Total -= v.GCTime.Total
+	r.SweepTime.Total -= v.SweepTime.Total
+	r.TotalTime.Total -= v.TotalTime.Total
 	return r
 }
 
@@ -83,41 +126,41 @@ func (g *GDesc) snapshotStat(lastTs, activeGCStartTime int64) (ret GExecutionSta
 
 	if activeGCStartTime != 0 { // terminating while GC is active
 		if g.CreationTime < activeGCStartTime {
-			ret.GCTime += lastTs - activeGCStartTime
+			ret.GCTime.addTime(lastTs - activeGCStartTime)
 		} else {
 			// The goroutine's lifetime completely overlaps
 			// with a GC.
-			ret.GCTime += lastTs - g.CreationTime
+			ret.GCTime.addTime(lastTs - g.CreationTime)
 		}
 	}
 
-	if g.TotalTime == 0 {
-		ret.TotalTime = lastTs - g.CreationTime
+	if g.TotalTime.Count == 0 {
+		ret.TotalTime.addTime(lastTs - g.CreationTime)
 	}
 
 	if g.lastStartTime != 0 {
-		ret.ExecTime += lastTs - g.lastStartTime
+		ret.ExecTime.addTime(lastTs - g.lastStartTime)
 	}
 	if g.blockNetTime != 0 {
-		ret.IOTime += lastTs - g.blockNetTime
+		ret.IOTime.addTime(lastTs - g.blockNetTime)
 	}
 	if g.blockSyncTime != 0 {
-		ret.BlockTime += lastTs - g.blockSyncTime
+		ret.BlockTime.addTime(lastTs - g.blockSyncTime)
 	}
 	if g.blockSyscallTime != 0 {
-		ret.SyscallTime += lastTs - g.blockSyscallTime
+		ret.SyscallTime.addTime(lastTs - g.blockSyscallTime)
 	}
 	if g.blockSchedTime != 0 {
-		ret.SchedWaitTime += lastTs - g.blockSchedTime
+		ret.SchedWaitTime.addTime(lastTs - g.blockSchedTime)
 	}
 	if g.blockSweepTime != 0 {
-		ret.SweepTime += lastTs - g.blockSweepTime
+		ret.SweepTime.addTime(lastTs - g.blockSweepTime)
 	}
 	return ret
 }
 
 // finalize is called when processing a goroutine end event or at
-// the end of trace processing. This finalizes the execution stat
+// the end of trace processing. This finalizes the execution GExecutionStatEntry
 // and any active regions in the goroutine, in which case trigger is nil.
 func (g *GDesc) finalize(lastTs, activeGCStartTime int64, trigger *Event) {
 	if trigger != nil {
@@ -183,7 +226,7 @@ func GoroutineStats(events []*Event) map[uint64]*GDesc {
 				g.StartTime = ev.Ts
 			}
 			if g.blockSchedTime != 0 {
-				g.SchedWaitTime += ev.Ts - g.blockSchedTime
+				g.SchedWaitTime.addTime(ev.Ts - g.blockSchedTime)
 				g.blockSchedTime = 0
 			}
 		case EvGoEnd, EvGoStop:
@@ -192,48 +235,48 @@ func GoroutineStats(events []*Event) map[uint64]*GDesc {
 		case EvGoBlockSend, EvGoBlockRecv, EvGoBlockSelect,
 			EvGoBlockSync, EvGoBlockCond:
 			g := gs[ev.G]
-			g.ExecTime += ev.Ts - g.lastStartTime
+			g.ExecTime.addTime(ev.Ts - g.lastStartTime)
 			g.lastStartTime = 0
 			g.blockSyncTime = ev.Ts
 		case EvGoSched, EvGoPreempt:
 			g := gs[ev.G]
-			g.ExecTime += ev.Ts - g.lastStartTime
+			g.ExecTime.addTime(ev.Ts - g.lastStartTime)
 			g.lastStartTime = 0
 			g.blockSchedTime = ev.Ts
 		case EvGoSleep, EvGoBlock:
 			g := gs[ev.G]
-			g.ExecTime += ev.Ts - g.lastStartTime
+			g.ExecTime.addTime(ev.Ts - g.lastStartTime)
 			g.lastStartTime = 0
 		case EvGoBlockNet:
 			g := gs[ev.G]
-			g.ExecTime += ev.Ts - g.lastStartTime
+			g.ExecTime.addTime(ev.Ts - g.lastStartTime)
 			g.lastStartTime = 0
 			g.blockNetTime = ev.Ts
 		case EvGoBlockGC:
 			g := gs[ev.G]
-			g.ExecTime += ev.Ts - g.lastStartTime
+			g.ExecTime.addTime(ev.Ts - g.lastStartTime)
 			g.lastStartTime = 0
 			g.blockGCTime = ev.Ts
 		case EvGoUnblock:
 			g := gs[ev.Args[0]]
 			if g.blockNetTime != 0 {
-				g.IOTime += ev.Ts - g.blockNetTime
+				g.IOTime.addTime(ev.Ts - g.blockNetTime)
 				g.blockNetTime = 0
 			}
 			if g.blockSyncTime != 0 {
-				g.BlockTime += ev.Ts - g.blockSyncTime
+				g.BlockTime.addTime(ev.Ts - g.blockSyncTime)
 				g.blockSyncTime = 0
 			}
 			g.blockSchedTime = ev.Ts
 		case EvGoSysBlock:
 			g := gs[ev.G]
-			g.ExecTime += ev.Ts - g.lastStartTime
+			g.ExecTime.addTime(ev.Ts - g.lastStartTime)
 			g.lastStartTime = 0
 			g.blockSyscallTime = ev.Ts
 		case EvGoSysExit:
 			g := gs[ev.G]
 			if g.blockSyscallTime != 0 {
-				g.SyscallTime += ev.Ts - g.blockSyscallTime
+				g.SyscallTime.addTime(ev.Ts - g.blockSyscallTime)
 				g.blockSyscallTime = 0
 			}
 			g.blockSchedTime = ev.Ts
@@ -246,7 +289,7 @@ func GoroutineStats(events []*Event) map[uint64]*GDesc {
 		case EvGCSweepDone:
 			g := gs[ev.G]
 			if g != nil && g.blockSweepTime != 0 {
-				g.SweepTime += ev.Ts - g.blockSweepTime
+				g.SweepTime.addTime(ev.Ts - g.blockSweepTime)
 				g.blockSweepTime = 0
 			}
 		case EvGCStart:
@@ -257,9 +300,9 @@ func GoroutineStats(events []*Event) map[uint64]*GDesc {
 					continue
 				}
 				if gcStartTime < g.CreationTime {
-					g.GCTime += ev.Ts - g.CreationTime
+					g.GCTime.addTime(ev.Ts - g.CreationTime)
 				} else {
-					g.GCTime += ev.Ts - gcStartTime
+					g.GCTime.addTime(ev.Ts - gcStartTime)
 				}
 			}
 			gcStartTime = 0 // indicates gc is inactive.
