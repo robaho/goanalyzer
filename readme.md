@@ -4,6 +4,8 @@ This project enhances the Go tracing facilities web interface.
 
 It changes the 'go routine analysis' summary page to show detailed metrics, allows sorting, and one-click access to the analysis graphs.
 
+You can also open a detailed trace of all routines in the group by clicking on the count.
+
 The advanced metrics also includes basic min/avg/max times for each event within the category, rather than
 just reporting the total time. This is extremely important for latency and performance analysis.
 
