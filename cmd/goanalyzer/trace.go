@@ -182,27 +182,45 @@ func httpJsonTrace(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if goids := r.FormValue("goid"); goids != "" {
-		// If goid argument is present, we are rendering a trace for this particular goroutine.
-		goid, err := strconv.ParseUint(goids, 10, 64)
-		if err != nil {
-			log.Printf("failed to parse goid parameter %q: %v", goids, err)
-			return
-		}
+
+		gids := strings.Split(goids, ",")
+
 		analyzeGoroutines(res.Events)
-		g, ok := gs[goid]
-		if !ok {
-			log.Printf("failed to find goroutine %d", goid)
-			return
+
+		gmap := make(map[uint64]bool)
+
+		for _, goids0 := range gids {
+			// If goid argument is present, we are rendering a trace for this particular goroutine(s)
+			goid, err := strconv.ParseUint(goids0, 10, 64)
+			if err != nil {
+				log.Printf("failed to parse goid parameter %q: %v", goids, err)
+				return
+			}
+			g, ok := gs[goid]
+			if !ok {
+				log.Printf("failed to find goroutine %d", goid)
+				return
+			}
+			params.mode = modeGoroutineOriented
+			params.startTime = g.StartTime
+			if g.EndTime != 0 {
+				params.endTime = g.EndTime
+			} else { // The goroutine didn't end.
+				params.endTime = lastTimestamp()
+			}
+
+			if len(gids) == 1 {
+				params.maing = goid
+			}
+
+			gmap0 := trace.RelatedGoroutines(res.Events, goid)
+			for k, v := range gmap0 {
+				if v == true {
+					gmap[k] = v
+				}
+			}
 		}
-		params.mode = modeGoroutineOriented
-		params.startTime = g.StartTime
-		if g.EndTime != 0 {
-			params.endTime = g.EndTime
-		} else { // The goroutine didn't end.
-			params.endTime = lastTimestamp()
-		}
-		params.maing = goid
-		params.gs = trace.RelatedGoroutines(res.Events, goid)
+		params.gs = gmap
 	} else if taskids := r.FormValue("taskid"); taskids != "" {
 		taskid, err := strconv.ParseUint(taskids, 10, 64)
 		if err != nil {

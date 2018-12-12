@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -25,9 +26,10 @@ func init() {
 
 // gtype describes a group of goroutines grouped by start PC.
 type gtype struct {
-	ID   uint64 // Unique identifier (PC).
-	Name string // Start function.
-	N    int    // Total number of goroutines in this group.
+	ID   uint64          // Unique identifier (PC).
+	Name string          // Start function.
+	N    int             // Total number of goroutines in this group.
+	GIDS map[uint64]bool // all of the goroutine ids in this group
 	trace.GExecutionStat
 }
 
@@ -59,6 +61,12 @@ func httpGoroutines(w http.ResponseWriter, r *http.Request) {
 
 	for _, g := range gs {
 		gs1 := gss[g.PC]
+
+		if gs1.GIDS == nil {
+			gs1.GIDS = make(map[uint64]bool)
+		}
+
+		gs1.GIDS[g.ID] = true
 		gs1.ID = g.PC
 		gs1.Name = g.Name
 
@@ -122,10 +130,21 @@ func httpGoroutines(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func gidList(m map[uint64]bool) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, fmt.Sprint(k))
+	}
+	return strings.Join(keys, ",")
+}
+
 var templGoroutines = template.Must(template.New("").Funcs(template.FuncMap{
 	"prettyDuration": func(s trace.GExecutionStatEntry) template.HTML {
 		d := time.Duration(s.Total) * time.Nanosecond
 		return template.HTML(niceDuration(d))
+	},
+	"gidList": func(gids map[uint64]bool) template.HTML {
+		return template.HTML(gidList(gids))
 	},
 	"percent": func(dividened, divisor int64) template.HTML {
 		if divisor == 0 {
@@ -224,7 +243,7 @@ function reloadTable(key, value) {
 {{range $i,$e := .GList}}
   <tr>
 	<td><a href="/goroutine?id={{.ID}}">{{.Name}}</a></td>
-	<td>{{.N}}</td>
+	<td><a href="/trace?goid={{gidList .GIDS}}">{{.N}}</a></td>
 	{{with .GExecutionStat}}
     <td> {{prettyDuration .TotalTime}} </td>
     <td>
